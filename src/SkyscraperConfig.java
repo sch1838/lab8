@@ -15,9 +15,9 @@ public class SkyscraperConfig implements Configuration {
     /** empty cell value display */
     public final static char EMPTY_CELL = '.';
 
-    private int gridSize;
+    private final int gridSize;
 
-    private int[][] grid;
+    private final int[][] grid;
 
     private final List<Integer> NESW = new ArrayList<>();
 
@@ -66,6 +66,10 @@ public class SkyscraperConfig implements Configuration {
                     }
                 }
             }
+        } else {
+            // Everything in here is as empty as the provided file
+            this.gridSize = 0;
+            this.grid = new int[0][0];
         }
 
         // close the input file
@@ -78,9 +82,17 @@ public class SkyscraperConfig implements Configuration {
      * @param copy SkyscraperConfig instance
      */
     public SkyscraperConfig(SkyscraperConfig copy) {
+        // Initialize grid size and array using values from provided config
+        this.gridSize = copy.gridSize;
+        this.grid = new int[this.gridSize][this.gridSize];
 
-        // TODO
+        // Copy all edge values from provided config
+        this.NESW.addAll(copy.NESW);
 
+        for (int row = 0; row < this.grid.length; row ++) {
+            // Copy each row of the provided config grid into the rows of this grid
+            System.arraycopy(copy.grid[row], 0, this.grid[row], 0, this.grid.length);
+        }
     }
 
     @Override
