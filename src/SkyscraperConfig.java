@@ -53,6 +53,13 @@ public class SkyscraperConfig implements Configuration {
                     if(f.hasNextInt()) {
                         int value = f.nextInt();
 
+                        if (this.gridFocus == null && value == EMPTY) {
+                            // Store the first empty grid index as the focus for solving (only once while scanning)
+                            // This occurs here to prevent unnecessary future iteration to determine the focus for
+                            // generating successors
+                            this.gridFocus = new Focus(row, col);
+                        }
+
                         if(row < this.gridSize) {
                             // Add value to edge counts
                             this.NESW.add(value);
@@ -164,7 +171,7 @@ public class SkyscraperConfig implements Configuration {
             for (int col = 0; col < this.grid.length; col++) {
                 // Add the value or an empty space to the end of the output String
                 int val = ints[col];
-                out.append(val == 0 ? ". " : val + " ");
+                out.append(val == EMPTY ? EMPTY_CELL : val).append(" ");
 
                 if (col + 1 == this.grid.length) {
                     // New line if this value is the last in its row
