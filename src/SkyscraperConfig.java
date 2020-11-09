@@ -175,4 +175,107 @@ public class SkyscraperConfig implements Configuration {
 
         return out.toString();
     }
+
+    private static class Focus {
+        /* The current row and column of this Focus. */
+        private int row, col;
+
+        /* A Focus is complete when it cannot be incremented. */
+        private boolean complete = false;
+
+        /**
+         * Constructs a new Focus.
+         *
+         * @param row The starting row of this Focus
+         * @param col The starting column of this Focus
+         */
+        protected Focus(int row, int col) {
+            this.row = row; this.col = col;
+        }
+
+        /**
+         * Handles forward movement of this Focus.
+         *
+         * The Focus will not move if it cannot do so without exceeding the bounds of the config grid - at this point,
+         * the Focus is complete and will no longer increment.
+         *
+         * If the Focus is incremented, is not complete, and the value in the config grid that this Focus points to is
+         * not empty, this method will call itself recursively until its Focus is complete or an empty value is found.
+         *
+         * Unless it is complete, the Focus should always point to the row and column of the next empty value in the
+         * grid of the config.
+         *
+         * @param config The config to which this Focus is attached
+         */
+        protected void increment(SkyscraperConfig config) {
+            if(this.complete) {
+                // Do not increment if the focus is complete
+                return;
+            }
+
+            int sze = config.gridSize;
+
+            if(this.col + 1 < sze) {
+                // First increment column if it will not exceed the grid size
+                this.col ++;
+            } else if (this.row < sze) {
+                // Otherwise, increment the row if it will not exceed the grid size and reset the column
+                this.row ++;
+                this.col = 0;
+            } else {
+                // If row and column cannot increment, the focus has completed
+                this.complete = true;
+            }
+
+            if(!complete) {
+                // If the focus is not complete (row and column can no longer be incremented), allow recursion
+                if (config.grid[this.row][this.col] != EMPTY) {
+                    // If the grid value at the row/column of this focus is not empty, attempt to increment again
+                    increment(config);
+                }
+            }
+        }
+
+        /**
+         * Handles reverse motion of this Focus.
+         *
+         * This Focus can only be decremented if it is not at (0, 0).
+         *
+         * If the Focus is decremented, it will become incomplete.
+         *
+         * @param config The config to which this Focus is attached
+         */
+        protected void decrement(SkyscraperConfig config) {
+            if(this.col == 0 && this.row == 0) {
+                // Cannot decrement if the focus is at (0, 0)
+                return;
+            }
+
+            if(this.col == 0) {
+                // If the Focus is at the first column, move up to the last column of the previous row
+                this.row --;
+                this.col = config.gridSize - 1;
+            } else {
+                // Otherwise, simply move back one column
+                this.col --;
+            }
+
+            // The Focus will only become incomplete if it has been decremented at all
+            this.complete = false;
+        }
+
+        /**
+         * Access the current row of this Focus.
+         */
+        protected int row() {
+            return this.row;
+        }
+
+        /**
+         * Access the current column of this Focus.
+         */
+        protected int col() {
+            return this.col;
+        }
+    }
 }
