@@ -21,6 +21,10 @@ public class SkyscraperConfig implements Configuration {
 
     private final List<Integer> NESW = new ArrayList<>();
 
+    private Focus gridFocus = null;
+
+    private boolean validated = false;
+
     /**
      * Constructor
      *
@@ -89,17 +93,26 @@ public class SkyscraperConfig implements Configuration {
      * @param copy SkyscraperConfig instance
      */
     public SkyscraperConfig(SkyscraperConfig copy) {
-        // Initialize grid size and array using values from provided config
-        this.gridSize = copy.gridSize;
-        this.grid = new int[this.gridSize][this.gridSize];
+        // gridSize is copied from the grid length in the field argument constructor
 
-        // Copy all edge values from provided config
-        this.NESW.addAll(copy.NESW);
+        // Pass a clone of the provided config's grid so modifying it will not affect the grid of this config
+        this(copy.grid.clone(), copy.NESW, copy.gridFocus, copy.validated);
+    }
 
-        for (int row = 0; row < this.grid.length; row ++) {
-            // Copy each row of the provided config grid into the rows of this grid
-            System.arraycopy(copy.grid[row], 0, this.grid[row], 0, this.grid.length);
-        }
+    /**
+     * Constructs a new SkyscraperConfig from some elements of an existing or uncreated other.
+     *
+     * @param grid The integer grid - this must be a clone or discarded after it is used here
+     * @param nesw The list of edge values organized by direction
+     * @param validated Whether the grid has already been validated
+     */
+    private SkyscraperConfig(int[][] grid, List<Integer> nesw, Focus gridFocus, boolean validated) {
+        this.gridSize = grid.length;
+        // No need to clone since the array reference will not be modified elsewhere
+        this.grid = grid;
+        this.NESW.addAll(nesw);
+        this.gridFocus = new Focus(gridFocus.row(), gridFocus.col());
+        this.validated = validated;
     }
 
     @Override
