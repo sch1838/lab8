@@ -92,7 +92,7 @@ public class SkyscraperConfig implements Configuration {
         // gridSize is copied from the grid length in the field argument constructor
 
         // Pass a clone of the provided config's grid so modifying it will not affect the grid of this config
-        this(copy.grid.clone(), copy.NESW, copy.gridFocus, copy.validated);
+        this(copy.grid.clone(), copy.NESW, copy.gridFocus);
     }
 
     /**
@@ -112,23 +112,38 @@ public class SkyscraperConfig implements Configuration {
     @Override
     public boolean isGoal() {
 
-        // TODO
+        return this.gridFocus.complete();
 
-        return false; // remove after implementing
+        // Is the matrix full
     }
 
     /**
-     * getSuccessors
+     * Provides the valid successors to the current SkyscraperConfig.
      *
-     * @returns Collection of Configurations
+     * @return A collection of valid Configurations
      */
     @Override
     public Collection<Configuration> getSuccessors() {
 
-        // TODO
+        List<Configuration> validConfigurations = new ArrayList<>();
 
-        return new ArrayList<>();   // remove after implementing
+        for (int val = 1; val <= this.gridSize; val ++) {
+            int[][] testSuccessor = new int[this.gridSize][this.gridSize];
 
+            for (int row = 0; row < this.grid.length; row++) {
+                testSuccessor[row] = this.grid[row].clone();
+            }
+
+            testSuccessor[this.gridFocus.row()][this.gridFocus.col()] = val;
+            if (validPlacement(testSuccessor)) {
+                validConfigurations.add(new SkyscraperConfig(testSuccessor, this.NESW, Focus.createIncrement(this.gridFocus, this)));
+            }
+        }
+
+        // Increment the grid focus so the same set of successors is not returned again
+        this.gridFocus.increment(this);
+
+        return validConfigurations;
     }
 
     /**
@@ -146,21 +161,22 @@ public class SkyscraperConfig implements Configuration {
 
     private boolean validPlacement(int[][] grid) {
 
+        // Get the currently focused row and column
         int row = this.gridFocus.row(), col = this.gridFocus.col();
 
+        // Get the new inserted value
         int value = grid[row][col];
 
         for(int index = 0; index < this.gridSize; index ++) {
             int rowVal = this.grid[row][index], colVal = this.grid[index][col];
 
-            if (rowVal == EMPTY && colVal == EMPTY) {
-                break;
-            }
-
             if(rowVal == value || colVal == value) {
+                // Grid is not valid if any value in the row or column matches the inserted value
                 return false;
             }
         }
+
+        // check rows from west only - maybe from north as well
 
         return true;
     }
