@@ -6,7 +6,7 @@ import java.util.*;
  * Represents a single configuration in the skyscraper puzzle.
  *
  * @author RIT CS
- * @author YOUR NAME HERE
+ * @author Samuel Henderson
  */
 public class SkyscraperConfig implements Configuration {
     /** empty cell value */
@@ -15,15 +15,11 @@ public class SkyscraperConfig implements Configuration {
     /** empty cell value display */
     public final static char EMPTY_CELL = '.';
 
-    private final int gridSize;
-
     private final int[][] grid;
-
     private final List<Integer> NESW = new ArrayList<>();
 
+    private final int gridSize;
     private Focus gridFocus = null;
-
-    private boolean validated = false;
 
     /**
      * Constructor
@@ -104,15 +100,13 @@ public class SkyscraperConfig implements Configuration {
      *
      * @param grid The integer grid - this must be a clone or discarded after it is used here
      * @param nesw The list of edge values organized by direction
-     * @param validated Whether the grid has already been validated
      */
-    private SkyscraperConfig(int[][] grid, List<Integer> nesw, Focus gridFocus, boolean validated) {
+    private SkyscraperConfig(int[][] grid, List<Integer> nesw, Focus gridFocus) {
         this.gridSize = grid.length;
         // No need to clone since the array reference will not be modified elsewhere
         this.grid = grid;
         this.NESW.addAll(nesw);
         this.gridFocus = new Focus(gridFocus.row(), gridFocus.col());
-        this.validated = validated;
     }
 
     @Override
@@ -148,6 +142,38 @@ public class SkyscraperConfig implements Configuration {
         // TODO
 
         return false;  // remove after implementing
+    }
+
+    private boolean validPlacement(int[][] grid) {
+
+        int row = this.gridFocus.row(), col = this.gridFocus.col();
+
+        int value = grid[row][col];
+
+        for(int index = 0; index < this.gridSize; index ++) {
+            int rowVal = this.grid[row][index], colVal = this.grid[index][col];
+
+            if (rowVal == EMPTY && colVal == EMPTY) {
+                break;
+            }
+
+            if(rowVal == value || colVal == value) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static final int NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3;
+
+    private int getEdge(int lookDir, int index) {
+
+        if(0 <= index && index < this.gridSize) {
+            return this.NESW.get(lookDir * 4 + index);
+        }
+
+        return -1;
     }
 
     /**
