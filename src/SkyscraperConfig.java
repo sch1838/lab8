@@ -112,7 +112,7 @@ public class SkyscraperConfig implements Configuration {
     @Override
     public boolean isGoal() {
 
-        return this.gridFocus.complete();
+        return this.gridFocus.complete(this);
 
         // Is the matrix full
     }
@@ -140,9 +140,6 @@ public class SkyscraperConfig implements Configuration {
             }
         }
 
-        // Increment the grid focus so the same set of successors is not returned again
-        this.gridFocus.increment(this);
-
         return validConfigurations;
     }
 
@@ -154,8 +151,13 @@ public class SkyscraperConfig implements Configuration {
     @Override
     public boolean isValid() {
 
-        // Only scan any columns if at least one is complete
-        boolean scanCols = this.gridFocus.row() == this.gridSize - 1 && 0 < this.gridFocus.col();
+        int colLimit = 0;
+
+        if(this.gridFocus.complete(this)) {
+            colLimit = this.gridSize;
+        } else if(this.gridFocus.row() == this.gridSize - 1) {
+            colLimit = this.gridFocus.col();
+        }
 
         Set<Integer>
                 visibleN = new HashSet<>(),
@@ -163,73 +165,76 @@ public class SkyscraperConfig implements Configuration {
                 visibleE = new HashSet<>(),
                 visibleW = new HashSet<>();
 
-        System.out.println(this.gridFocus);
-
-        if (this.grid[0][0] == 4 && this.grid[0][1] == 3 && this.grid[0][2] == 1) {
-            System.out.println(this.gridFocus);
+        if(grid[3][0] == 1 && grid[3][1] == 2) {
+            if(grid[0][0] == 4 && grid[0][1] == 3 && grid[0][2] == 1 && grid[0][3] == 2) {
+                System.out.println();
+            }
         }
 
-        for(int row = 0; row < (this.gridFocus.complete() ? this.gridSize : this.gridFocus.row()); row ++) {
-            // If the focus is complete, iterate through all rows - otherwise all below focused row
+        for(int row = 0; row < (this.gridFocus.complete(this) ? this.gridSize : this.gridFocus.row()); row ++) {
+            // If the focus is complete, iterate through all rows - otherwise all before focused row
 
-            // Stored for checking against max heights after dual row scan is complete (add last values)
-            int lastW = this.grid[row][this.gridSize - 1], lastE = this.grid[row][0];
+            // The column scanned is dependent on the value of the outer loop, so it should be checked against focus
 
             // Initialize max east/west values to be the first on either edge
             // The last value checked from one direction is the first to be checked by the other
-            int maxE = lastW, maxW = lastE;
-
-            // Add the two outside values because they are always visible
-            visibleE.add(maxE); visibleW.add(maxW);
+            int maxE = this.grid[row][this.gridSize - 1], maxW = this.grid[row][0];
+            int maxS = this.grid[this.gridSize - 1][row], maxN = this.grid[0][row];
 
             // Get the edge values for this row
-            int eastEdge = getEdge(EAST, row), westEdge = getEdge(WEST, row);
+            int edgeE = getEdge(EAST,  row), edgeW = getEdge(WEST,  row);
+            int edgeN = getEdge(NORTH, row), edgeS = getEdge(SOUTH, row);
 
-            for(int col = 1; col < this.gridSize - 1; col ++) {
+            for(int col = 0; col < this.gridSize; col ++) {
 
                 int valW = this.grid[row][col], valE = this.grid[row][this.gridSize - 1 - col];
+                int valN = this.grid[col][row], valS = this.grid[this.gridSize - 1 - col][row];
 
-                if(maxW < valW) {
-                    visibleW.add(valW);
-                    maxW = valW;
+                // col: 0 1 2 3
 
-                    if(westEdge < visibleW.size()) {
-                        return false;
-                    }
+                if(compareAndAdd(maxW, valW, edgeW, visibleW) || compareAndAdd(maxE, valE, edgeE, visibleE)) {
+                    return false;
                 }
 
-                if(maxE < valE) {
-                    visibleE.add(valE);
-                    maxE = valE;
+                maxW = Math.max(maxW, valW);
+                maxE = Math.max(maxE, valE);
 
-                    if(eastEdge < visibleE.size()) {
+                if(row < colLimit) {
+                    if(compareAndAdd(maxN, valN, edgeN, visibleN) || compareAndAdd(maxS, valS, edgeS, visibleS)) {
                         return false;
                     }
+
+                    maxN = Math.max(maxN, valN);
+                    maxS = Math.max(maxS, valS);
                 }
-
-                // fill sets for checking
             }
 
-            if(maxE < lastE) {
-                visibleE.add(lastE);
-            }
-
-            if(maxW < lastW) {
-                visibleW.add(lastW);
-            }
-
-            if(westEdge != visibleW.size() || eastEdge != visibleE.size()) {
+            if(edgeW != visibleW.size() || edgeE != visibleE.size()) {
                 return false;
+            }
+
+            if(row < colLimit) {
+                if(edgeN != visibleN.size() || edgeS != visibleS.size()) {
+                    return false;
+                }
             }
 
             visibleE.clear();
             visibleW.clear();
+            visibleN.clear();
+            visibleS.clear();
         }
 
-        // check rows and columns both ways for visibility
-        // count visibility based on visibility of preceding values
-
         return true;
+    }
+
+    private boolean compareAndAdd(int max, int val, int edge, Set<Integer> set) {
+        if(max <= val) {
+            set.add(val);
+            return edge < set.size();
+        }
+
+        return false;
     }
 
     /**
@@ -320,9 +325,6 @@ public class SkyscraperConfig implements Configuration {
         /* The current row and column of this Focus. */
         private int row, col;
 
-        /* A Focus is complete when it cannot be incremented. */
-        private boolean complete = false;
-
         /**
          * Constructs a new Focus.
          *
@@ -354,7 +356,7 @@ public class SkyscraperConfig implements Configuration {
          * @param config The config to which this Focus is attached
          */
         protected void increment(SkyscraperConfig config) {
-            if(this.complete) {
+            if(this.complete(config)) {
                 // Do not increment if the focus is complete
                 return;
             }
@@ -368,12 +370,9 @@ public class SkyscraperConfig implements Configuration {
                 // Otherwise, increment the row if it will not exceed the grid size and reset the column
                 this.row ++;
                 this.col = 0;
-            } else {
-                // If row and column cannot increment, the focus has completed
-                this.complete = true;
             }
 
-            if(!complete) {
+            if(!this.complete(config)) {
                 // If the focus is not complete (row and column can no longer be incremented), allow recursion
                 if (config.grid[this.row][this.col] != EMPTY) {
                     // If the grid value at the row/column of this focus is not empty, attempt to increment again
@@ -405,9 +404,6 @@ public class SkyscraperConfig implements Configuration {
                 // Otherwise, simply move back one column
                 this.col --;
             }
-
-            // The Focus will only become incomplete if it has been decremented at all
-            this.complete = false;
         }
 
         /**
@@ -424,16 +420,16 @@ public class SkyscraperConfig implements Configuration {
             return this.col;
         }
 
-        /**
-         * Provides the status of this Focus.
-         */
-        protected boolean complete() {
-            return this.complete;
+        protected boolean complete(SkyscraperConfig config) {
+            int sze = config.gridSize;
+            int val = config.grid[this.row][this.col];
+
+            return this.row == sze - 1 && this.col == sze - 1 && val != EMPTY;
         }
 
         @Override
         public String toString() {
-            return this.complete + ":[r" + this.row + ", c" + this.col + "]";
+            return "[" + this.row + ":" + this.col + "]";
         }
     }
 }
