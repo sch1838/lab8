@@ -160,19 +160,19 @@ public class SkyscraperConfig implements Configuration {
             colLimit = this.gridFocus.col();
         }
 
+        int rowLimit = this.gridSize;
+
+        if(this.gridFocus.row() < gridSize) {
+            rowLimit = this.gridFocus.row();
+        }
+
         Set<Integer>
                 visibleN = new HashSet<>(),
                 visibleS = new HashSet<>(),
                 visibleE = new HashSet<>(),
                 visibleW = new HashSet<>();
 
-        if(grid[3][0] == 1 && grid[3][1] == 2) {
-            if(grid[0][0] == 4 && grid[0][1] == 3 && grid[0][2] == 1 && grid[0][3] == 2) {
-                System.out.println();
-            }
-        }
-
-        for(int row = 0; row < (this.gridFocus.complete(this) ? this.gridSize : this.gridFocus.row()); row ++) {
+        for(int row = 0; row < rowLimit; row ++) {
             // If the focus is complete, iterate through all rows - otherwise all before focused row
 
             // The column scanned is dependent on the value of the outer loop, so it should be checked against focus
