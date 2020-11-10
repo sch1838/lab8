@@ -46,9 +46,9 @@ public class SkyscraperConfig implements Configuration {
             this.gridSize = f.nextInt();
             this.grid = new int[this.gridSize][this.gridSize];
 
-            // Iterate over twice as many rows as the grid will have
+            // Iterate over 4 + n lines - four lines hold the edge values and n hold the initial grid values
             // Doubling occurs to cover edge values without additional loops
-            for(int row = 0; row < this.gridSize * 2; row ++) {
+            for(int row = 0; row < 4 + this.gridSize; row ++) {
                 for(int col = 0; col < this.gridSize; col ++) {
                     if(f.hasNextInt()) {
                         int value = f.nextInt();
@@ -60,12 +60,12 @@ public class SkyscraperConfig implements Configuration {
                             this.gridFocus = new Focus(row - 4, col);
                         }
 
-                        if(row < this.gridSize) {
+                        if(row < 4) {
                             // Add value to edge counts
                             this.NESW.add(value);
                         } else {
                             // Insert value into grid
-                            this.grid[row - this.gridSize][col] = value;
+                            this.grid[row - 4][col] = value;
                         }
                     } else {
                         // Cease inner iteration if there are no more integers to read
