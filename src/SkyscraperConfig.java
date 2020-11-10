@@ -13,7 +13,7 @@ public class SkyscraperConfig implements Configuration {
     public final static int EMPTY = 0;
 
     /** empty cell value display */
-    public final static char EMPTY_CELL = '.';
+    public final static String EMPTY_CELL = ".";
 
     private final int[][] grid;
     private final List<Integer> NESW = new ArrayList<>();
@@ -57,7 +57,7 @@ public class SkyscraperConfig implements Configuration {
                             // Store the first empty grid index as the focus for solving (only once while scanning)
                             // This occurs here to prevent unnecessary future iteration to determine the focus for
                             // generating successors
-                            this.gridFocus = new Focus(row, col);
+                            this.gridFocus = new Focus(row - 4, col);
                         }
 
                         if(row < this.gridSize) {
@@ -239,6 +239,12 @@ public class SkyscraperConfig implements Configuration {
             this.row = row; this.col = col;
         }
 
+        protected static Focus createIncrement(Focus source, SkyscraperConfig config) {
+            Focus focus = new Focus(source.row(), source.col());
+            focus.increment(config);
+            return focus;
+        }
+
         /**
          * Handles forward movement of this Focus.
          *
@@ -264,7 +270,7 @@ public class SkyscraperConfig implements Configuration {
             if(this.col + 1 < sze) {
                 // First increment column if it will not exceed the grid size
                 this.col ++;
-            } else if (this.row < sze) {
+            } else if (this.row + 1 < sze) {
                 // Otherwise, increment the row if it will not exceed the grid size and reset the column
                 this.row ++;
                 this.col = 0;
@@ -322,6 +328,18 @@ public class SkyscraperConfig implements Configuration {
          */
         protected int col() {
             return this.col;
+        }
+
+        /**
+         * Provides the status of this Focus.
+         */
+        protected boolean complete() {
+            return this.complete;
+        }
+
+        @Override
+        public String toString() {
+            return this.complete + ":[r" + this.row + ", c" + this.col + "]";
         }
     }
 }
