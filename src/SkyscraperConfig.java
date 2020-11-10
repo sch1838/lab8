@@ -250,16 +250,28 @@ public class SkyscraperConfig implements Configuration {
         // Get the new inserted value
         int value = grid[row][col];
 
-        for(int index = 0; index < this.gridSize; index ++) {
-            int rowVal = this.grid[row][index], colVal = this.grid[index][col];
+        Set<Integer> visibleW = new HashSet<>(), visibleN = new HashSet<>();
 
-            if(rowVal == value || colVal == value) {
+        int maxW = grid[row][0], maxN = grid[0][col];
+
+        int edgeW = this.getEdge(WEST, row), edgeN = this.getEdge(NORTH, col);
+
+        for(int index = 0; index < this.gridSize; index ++) {
+            int valW = grid[row][index], valN = grid[index][col];
+
+            int oldValW = this.grid[row][index], oldValN = this.grid[index][col];
+
+            if(oldValW == value || oldValN == value) {
                 // Grid is not valid if any value in the row or column matches the inserted value
                 return false;
             }
-        }
 
-        // check rows from west only - maybe from north as well
+            if(compareAndAdd(maxW, valW, edgeW, visibleW) || compareAndAdd(maxN, valN, edgeN, visibleN)) {
+                return false;
+            }
+
+            maxW = Math.max(maxW, valW); maxN = Math.max(maxN, valN);
+        }
 
         return true;
     }
