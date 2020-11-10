@@ -154,11 +154,89 @@ public class SkyscraperConfig implements Configuration {
     @Override
     public boolean isValid() {
 
-        // TODO
+        // Only scan any columns if at least one is complete
+        boolean scanCols = this.gridFocus.row() == this.gridSize - 1 && 0 < this.gridFocus.col();
 
-        return false;  // remove after implementing
+        Set<Integer>
+                visibleN = new HashSet<>(),
+                visibleS = new HashSet<>(),
+                visibleE = new HashSet<>(),
+                visibleW = new HashSet<>();
+
+        System.out.println(this.gridFocus);
+
+        if (this.grid[0][0] == 4 && this.grid[0][1] == 3 && this.grid[0][2] == 1) {
+            System.out.println(this.gridFocus);
+        }
+
+        for(int row = 0; row < (this.gridFocus.complete() ? this.gridSize : this.gridFocus.row()); row ++) {
+            // If the focus is complete, iterate through all rows - otherwise all below focused row
+
+            // Stored for checking against max heights after dual row scan is complete (add last values)
+            int lastW = this.grid[row][this.gridSize - 1], lastE = this.grid[row][0];
+
+            // Initialize max east/west values to be the first on either edge
+            // The last value checked from one direction is the first to be checked by the other
+            int maxE = lastW, maxW = lastE;
+
+            // Add the two outside values because they are always visible
+            visibleE.add(maxE); visibleW.add(maxW);
+
+            // Get the edge values for this row
+            int eastEdge = getEdge(EAST, row), westEdge = getEdge(WEST, row);
+
+            for(int col = 1; col < this.gridSize - 1; col ++) {
+
+                int valW = this.grid[row][col], valE = this.grid[row][this.gridSize - 1 - col];
+
+                if(maxW < valW) {
+                    visibleW.add(valW);
+                    maxW = valW;
+
+                    if(westEdge < visibleW.size()) {
+                        return false;
+                    }
+                }
+
+                if(maxE < valE) {
+                    visibleE.add(valE);
+                    maxE = valE;
+
+                    if(eastEdge < visibleE.size()) {
+                        return false;
+                    }
+                }
+
+                // fill sets for checking
+            }
+
+            if(maxE < lastE) {
+                visibleE.add(lastE);
+            }
+
+            if(maxW < lastW) {
+                visibleW.add(lastW);
+            }
+
+            if(westEdge != visibleW.size() || eastEdge != visibleE.size()) {
+                return false;
+            }
+
+            visibleE.clear();
+            visibleW.clear();
+        }
+
+        // check rows and columns both ways for visibility
+        // count visibility based on visibility of preceding values
+
+        return true;
     }
 
+    /**
+     * Verifies that the provided grid does not contain duplicates in the currently focused row and column.
+     *
+     * @param grid The grid to be scanned.
+     */
     private boolean validPlacement(int[][] grid) {
 
         // Get the currently focused row and column
