@@ -135,7 +135,8 @@ public class SkyscraperConfig implements Configuration {
             }
 
             testSuccessor[this.gridFocus.row()][this.gridFocus.col()] = val;
-            if (validPlacement(testSuccessor)) {
+
+            if (applyEdge(testSuccessor) || validPlacement(testSuccessor)) {
                 validConfigurations.add(new SkyscraperConfig(testSuccessor, this.NESW, Focus.createIncrement(this.gridFocus, this)));
             }
         }
@@ -185,28 +186,29 @@ public class SkyscraperConfig implements Configuration {
             int edgeE = getEdge(EAST,  row), edgeW = getEdge(WEST,  row);
             int edgeN = getEdge(NORTH, row), edgeS = getEdge(SOUTH, row);
 
-            for(int col = 0; col < this.gridSize; col ++) {
+            for (int col = 0; col < this.gridSize; col++) {
 
                 int valW = this.grid[row][col], valE = this.grid[row][this.gridSize - 1 - col];
                 int valN = this.grid[col][row], valS = this.grid[this.gridSize - 1 - col][row];
 
-                // col: 0 1 2 3
+                    // col: 0 1 2 3
 
-                if(compareAndAdd(maxW, valW, edgeW, visibleW) || compareAndAdd(maxE, valE, edgeE, visibleE)) {
+                if (compareAndAdd(maxW, valW, edgeW, visibleW) || compareAndAdd(maxE, valE, edgeE, visibleE)) {
                     return false;
                 }
 
                 maxW = Math.max(maxW, valW);
                 maxE = Math.max(maxE, valE);
 
-                if(row < colLimit) {
-                    if(compareAndAdd(maxN, valN, edgeN, visibleN) || compareAndAdd(maxS, valS, edgeS, visibleS)) {
+                if (row < colLimit) {
+                    if (compareAndAdd(maxN, valN, edgeN, visibleN) || compareAndAdd(maxS, valS, edgeS, visibleS)) {
                         return false;
                     }
 
                     maxN = Math.max(maxN, valN);
                     maxS = Math.max(maxS, valS);
                 }
+
             }
 
             if(edgeW != visibleW.size() || edgeE != visibleE.size()) {
@@ -232,6 +234,36 @@ public class SkyscraperConfig implements Configuration {
         if(max <= val) {
             set.add(val);
             return edge < set.size();
+        }
+
+        return false;
+    }
+
+    private boolean applyEdge(int[][] grid) {
+
+        int row = this.gridFocus.row(), col = this.gridFocus.col();
+        int max = this.gridSize - 1;
+
+        int edgeNS = 0, edgeEW = 0;
+
+        if (row == 0) {
+            edgeNS = getEdge(NORTH, col);
+        } else if (row == max) {
+            edgeNS = getEdge(SOUTH, col);
+        }
+
+        if (col == 0) {
+            edgeEW = getEdge(WEST, row);
+        } else if (col == max) {
+            edgeEW = getEdge(EAST, row);
+        }
+
+        if (edgeNS == 1 || edgeEW == 1) {
+            grid[row][col] = this.gridSize;
+            return true;
+        } else if(edgeNS == this.gridSize || edgeEW == this.gridSize) {
+            grid[row][col] = 1;
+            return true;
         }
 
         return false;
@@ -281,7 +313,7 @@ public class SkyscraperConfig implements Configuration {
     private int getEdge(int lookDir, int index) {
 
         if(0 <= index && index < this.gridSize) {
-            return this.NESW.get(lookDir * 4 + index);
+            return this.NESW.get(lookDir * this.gridSize + index);
         }
 
         return -1;
