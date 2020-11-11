@@ -47,7 +47,6 @@ public class SkyscraperConfig implements Configuration {
             this.grid = new int[this.gridSize][this.gridSize];
 
             // Iterate over 4 + n lines - four lines hold the edge values and n hold the initial grid values
-            // Doubling occurs to cover edge values without additional loops
             for(int row = 0; row < 4 + this.gridSize; row ++) {
                 for(int col = 0; col < this.gridSize; col ++) {
                     if(f.hasNextInt()) {
@@ -89,7 +88,7 @@ public class SkyscraperConfig implements Configuration {
      * @param copy SkyscraperConfig instance
      */
     public SkyscraperConfig(SkyscraperConfig copy) {
-        // gridSize is copied from the grid length in the field argument constructor
+        // NOTE: gridSize is copied from the grid length in the field argument constructor
 
         // Pass a clone of the provided config's grid so modifying it will not affect the grid of this config
         this(copy.grid.clone(), copy.NESW, copy.gridFocus);
@@ -111,14 +110,16 @@ public class SkyscraperConfig implements Configuration {
 
     @Override
     public boolean isGoal() {
-
-        return this.gridFocus.complete(this);
-
-        // Is the matrix full
+        // Null focus indicates that the grid was already solved - otherwise, only true when the focus has completed
+        // for this SkyscraperConfig
+        return this.gridFocus == null || this.gridFocus.complete(this);
     }
 
     /**
-     * Provides the valid successors to the current SkyscraperConfig.
+     * Provides the successors to the current SkyscraperConfig.
+     *
+     * The returned collection will exclude successors with rows or columns containing duplicate values, and some
+     * where the new value would cause the number of visible buildings to exceed the required number from North or West.
      *
      * @return A collection of valid Configurations
      */
@@ -128,6 +129,7 @@ public class SkyscraperConfig implements Configuration {
         List<Configuration> validConfigurations = new ArrayList<>();
 
         for (int val = 1; val <= this.gridSize; val ++) {
+            // Create empty test grid, fill with current values, and insert current test value
             int[][] testSuccessor = new int[this.gridSize][this.gridSize];
 
             for (int row = 0; row < this.grid.length; row++) {
@@ -136,6 +138,7 @@ public class SkyscraperConfig implements Configuration {
 
             testSuccessor[this.gridFocus.row()][this.gridFocus.col()] = val;
 
+            // Early prune to eliminate some successors without creating a new SkyscraperConfig
             if (validPlacement(testSuccessor)) {
                 validConfigurations.add(new SkyscraperConfig(testSuccessor, this.NESW, Focus.createIncrement(this.gridFocus, this)));
             }
@@ -147,11 +150,12 @@ public class SkyscraperConfig implements Configuration {
     /**
      * isValid() - checks if current config is valid
      *
-     * @returns true if config is valid, false otherwise
+     * @return true if config is valid, false otherwise
      */
     @Override
     public boolean isValid() {
 
+        // Limits the number of scanned columns - 0 or the number of filled columns
         int colLimit = 0;
 
         if(this.gridFocus.complete(this)) {
@@ -160,36 +164,37 @@ public class SkyscraperConfig implements Configuration {
             colLimit = this.gridFocus.col();
         }
 
+        // Limits the number of scanned rows - will not scan incomplete or empty rows
         int rowLimit = this.gridSize;
 
         if(this.gridFocus.row() < gridSize) {
             rowLimit = this.gridFocus.row();
         }
 
+        // The sets of visible values for each direction - the functionality of these is the same as in validPlacement()
         Set<Integer>
                 visibleN = new HashSet<>(),
                 visibleS = new HashSet<>(),
                 visibleE = new HashSet<>(),
                 visibleW = new HashSet<>();
 
+        // Scan laterally and longitudinally simultaneously
         for(int row = 0; row < rowLimit; row ++) {
-            // If the focus is complete, iterate through all rows - otherwise all before focused row
-
-            // The column scanned is dependent on the value of the outer loop, so it should be checked against focus
-
             // Initialize max east/west values to be the first on either edge
             // The last value checked from one direction is the first to be checked by the other
             int maxE = this.grid[row][this.gridSize - 1], maxW = this.grid[row][0];
             int maxS = this.grid[this.gridSize - 1][row], maxN = this.grid[0][row];
 
-            // Get the edge values for this row
+            // Get the edge values for the row and column
             int edgeE = getEdge(EAST,  row), edgeW = getEdge(WEST,  row);
             int edgeN = getEdge(NORTH, row), edgeS = getEdge(SOUTH, row);
 
             for (int col = 0; col < this.gridSize; col++) {
-
+                // Hold current values - column positions are inverse of row positions
                 int valW = this.grid[row][col], valE = this.grid[row][this.gridSize - 1 - col];
                 int valN = this.grid[col][row], valS = this.grid[this.gridSize - 1 - col][row];
+
+                // Check that any new value has not caused excess visible values for any set and update maximums
 
                 if (compareAndAdd(maxW, valW, edgeW, visibleW) || compareAndAdd(maxE, valE, edgeE, visibleE)) {
                     return false;
@@ -209,6 +214,9 @@ public class SkyscraperConfig implements Configuration {
 
             }
 
+            // The Configuration is invalid at this point if the number of visible values in any row or column
+            // is not equal to the number required by the corresponding edge value
+
             if(edgeW != visibleW.size() || edgeE != visibleE.size()) {
                 return false;
             }
@@ -219,6 +227,7 @@ public class SkyscraperConfig implements Configuration {
                 }
             }
 
+            // Clear all visible sets for use with upcoming row/column
             visibleE.clear();
             visibleW.clear();
             visibleN.clear();
@@ -228,8 +237,23 @@ public class SkyscraperConfig implements Configuration {
         return true;
     }
 
+    /**
+     * Attempts to add a value to a set of visible values and determines whether the size of the set thereafter exceeds
+     * its edge value.
+     *
+     * A result of false indicates that the edge requisite has not been exceeded by the size of the set.
+     *
+     * A value will only be added to a set if it is greater than the maximum value before it - this indicates that the
+     * building it represents is taller than any others before it when looking from a particular direction.
+     *
+     * @param max The current maximum value for a row and direction
+     * @param val The value that may be added to the set
+     * @param edge The edge value representing the required size of the set
+     * @param set The set of visible values for a row and direction
+     */
     private boolean compareAndAdd(int max, int val, int edge, Set<Integer> set) {
         if(max <= val) {
+            // Add if visible
             set.add(val);
             return edge < set.size();
         }
@@ -240,25 +264,43 @@ public class SkyscraperConfig implements Configuration {
     /**
      * Verifies that the provided grid does not contain duplicates in the currently focused row and column.
      *
+     * Checks as much of the grid as is filled to determine if the new value will immediately disrupt the edge values.
+     * This is only checked from the North and West directions, as the East and South will sometimes depend on values
+     * that have not yet been placed.
+     *
+     * An important distinction is herein made between the provided grid and the grid of this SkyscraperConfiguration.
+     * Values from this grid are used to prevent duplicates because the new grid will contain the newly placed value,
+     * triggering a false negative when it is reached iteratively.
+     *
+     * This method is called on a SkyscraperConfig when generating its successors; the parameter grid is thus a
+     * successor with a new value already placed at the position determined by the gridFocus of this config.
+     *
      * @param grid The grid to be scanned.
      */
     private boolean validPlacement(int[][] grid) {
 
-        // Get the currently focused row and column
+        // Get the currently focused row and column from gridFocus
         int row = this.gridFocus.row(), col = this.gridFocus.col();
 
         // Get the new inserted value
         int value = grid[row][col];
 
+        // Store the visible values from West and North directions
         Set<Integer> visibleW = new HashSet<>(), visibleN = new HashSet<>();
 
+        // Initial maximum values are the first in the row and column
         int maxW = grid[row][0], maxN = grid[0][col];
 
+        // Edge values for looking directions are needed to check that the size of either set of visible values has
+        // exceeded the edge value for its corresponding row or column
         int edgeW = this.getEdge(WEST, row), edgeN = this.getEdge(NORTH, col);
 
+        // Iterate over the row and column simultaneously
         for(int index = 0; index < this.gridSize; index ++) {
+            // Values from successor grid
             int valW = grid[row][index], valN = grid[index][col];
 
+            // Values from this grid
             int oldValW = this.grid[row][index], oldValN = this.grid[index][col];
 
             if(oldValW == value || oldValN == value) {
@@ -266,21 +308,35 @@ public class SkyscraperConfig implements Configuration {
                 return false;
             }
 
+            // Attempt to add the current successor values to their corresponding sets - if they are added and this
+            // causes the size of either set to exceed its edge value, this method will return false and a successor
+            // will not be created from the parameter grid
             if(compareAndAdd(maxW, valW, edgeW, visibleW) || compareAndAdd(maxN, valN, edgeN, visibleN)) {
                 return false;
             }
 
+            // Update the max values for visibility comparison - visibility in a direction is based on whether the
+            // current value is taller than the maximum value before it
             maxW = Math.max(maxW, valW); maxN = Math.max(maxN, valN);
         }
 
         return true;
     }
 
+    // Constants used in conjunction with getEdge as the lookDir parameter
     private static final int NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3;
 
+    /**
+     * Provides the edge value for a set direction and an index.
+     *
+     * @param lookDir The direction from which the buildings will be viewed
+     * @param index The edge index local to the section of the NESW list occupied by one edge -> [0, gridSize)
+     */
     private int getEdge(int lookDir, int index) {
 
         if(0 <= index && index < this.gridSize) {
+            // The edge values of each direction start at n = [0, 4) * gridSize
+            // For a gridSize of 4: NESW = [N0, N1, N2, N3, E0, ... E3, S0, ... S3, W0, ... W3]
             return this.NESW.get(lookDir * this.gridSize + index);
         }
 
@@ -313,7 +369,7 @@ public class SkyscraperConfig implements Configuration {
             out.append("S: ").append(NESW.subList(sze * 2, sze * 3)).append("\n");
             out.append("W: ").append(NESW.subList(sze * 3, sze * 4)).append("\n");
         } catch (IndexOutOfBoundsException e) {
-            // Except if there are less than gridSize^2 edge values
+            // Except if there are less than 4 * gridSize edge values
             return "Operation failed at SkyscraperConfig::toString(): Invalid edge values";
         }
 
@@ -333,6 +389,13 @@ public class SkyscraperConfig implements Configuration {
         return out.toString();
     }
 
+    /**
+     * The Focus class represents a point in (row, column) format that refers to the next empty (0) value in a
+     * SkyscraperConfig grid. If no such values exist in the grid, it represents the 'cursor' location of a config,
+     * that is, the position in the grid that the config will resolve next.
+     *
+     * Focus instances should not be shared by configurations with different grid sizes.
+     */
     private static class Focus {
         /* The current row and column of this Focus. */
         private int row, col;
@@ -347,6 +410,12 @@ public class SkyscraperConfig implements Configuration {
             this.row = row; this.col = col;
         }
 
+        /**
+         * Creates a new Focus that is an incremented version of that which is provided.
+         *
+         * @param source The Focus to be copied and modified
+         * @param config The config either Focus is attached to
+         */
         protected static Focus createIncrement(Focus source, SkyscraperConfig config) {
             Focus focus = new Focus(source.row(), source.col());
             focus.increment(config);
@@ -432,6 +501,12 @@ public class SkyscraperConfig implements Configuration {
             return this.col;
         }
 
+        /**
+         * Provides the status of this Focus given a config.
+         *
+         * The Focus is complete only if it is at the last possible index of the config grid and the value at that
+         * index is not empty (0).
+         */
         protected boolean complete(SkyscraperConfig config) {
             int sze = config.gridSize;
             int val = config.grid[this.row][this.col];
@@ -439,6 +514,9 @@ public class SkyscraperConfig implements Configuration {
             return this.row == sze - 1 && this.col == sze - 1 && val != EMPTY;
         }
 
+        /**
+         * [ROW:COL]
+         */
         @Override
         public String toString() {
             return "[" + this.row + ":" + this.col + "]";
